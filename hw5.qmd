@@ -76,12 +76,19 @@ Read the data file as a tibble in R. Preprocess the data such that:
 1. the variables are of the right data type, e.g., categorical variables are encoded as factors
 2. all column names to lower case for consistency
 3. Any observations with missing values are dropped
-
-```R
+```{R}
 path <- "data/housing.csv"
 
-df <- ... # Insert your code here
+df <- read_csv(path) %>%
+  # Convert column names to lower case
+  rename_with(tolower) %>%
+  # Convert categorical variables to factors. Assuming 'ocean_proximity' is the only categorical variable here
+  mutate(ocean_proximity = as.factor(ocean_proximity)) %>%
+  # Remove observations with missing values
+  drop_na()
 ```
+
+
 
 ---
 
@@ -89,9 +96,13 @@ df <- ... # Insert your code here
 
 Visualize the correlation matrix of all numeric columns in `df` using `corrplot()`
 
-```R
-df %>% ... # Insert your code here
+```{R}
+df %>% 
+    select_if(is.numeric) %>%
+    cor() %>%
+    corrplot(method = "circle")
 ```
+
 
 ---
 
@@ -99,7 +110,7 @@ df %>% ... # Insert your code here
 
 Split the data `df` into `df_train` and `df_split` using `test_ind` in the code below:
 
-```R
+```{R}
 set.seed(42)
 test_ind <- sample(
   1:nrow(df), 
@@ -107,9 +118,10 @@ test_ind <- sample(
   replace=FALSE
 )
 
-df_train <- ... # Insert your code here
-df_test  <- ... # Insert your code here
+df_train <- df %>% slice(-test_ind)
+df_test <- df %>% slice(test_ind)
 ```
+
 
 ---
 
