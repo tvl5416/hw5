@@ -222,19 +222,61 @@ rmse(df_test$median_house_value, svm_predictions)
 
 Initialize a neural network model architecture:
 
-```R
+```{R}
 NNet <- nn_module(
-    initialize = function(p, q1, q2, q3){
-      ... # Insert your code here
-    },
-    forward = function(x){
-      ... # Insert your code here
-    }
+  initialize = function(p, q1, q2, q3) {
+    self$layer1 <- nn_linear(p, q1)
+    self$activation1 <- nn_relu()
+    self$layer2 <- nn_linear(q1, q2)
+    self$activation2 <- nn_relu()
+    self$layer3 <- nn_linear(q2, q3)
+    self$activation3 <- nn_relu()
+    self$output_layer <- nn_linear(q3, 1) # Assuming a single output
+  },
+  
+  forward = function(x) {
+    x <- self$layer1(x)
+    x <- self$activation1(x)
+    x <- self$layer2(x)
+    x <- self$activation2(x)
+    x <- self$layer3(x)
+    x <- self$activation3(x)
+    x <- self$output_layer(x)
+    return(x)
+  }
 )
 ```
 
 
+
+
 Fit a neural network model to predict the `median_house_value` using the same predictors as in 1.4. Use the `model.matrix` function to create the covariate matrix and `luz` package for fitting the network with $32, 16, 8$ nodes in each of the three hidden layers. 
+
+```{R}
+
+library(torch)
+install.packages('luz')
+library(luz)
+
+
+nnet_fit <- nnet_model %>% 
+  setup(
+    loss = nn_mse_loss(),
+    optimizer = optim_adam
+  ) %>%
+  set_hparams(
+    learning_rate = 0.001
+  ) %>%
+  set_opt_params(
+    weight_decay = 0.01
+  ) %>%
+  fit(
+    dataloader = dataloader,
+    epochs = 100, # Adjust based on convergence and computational resources
+    dataloader_options = list(num_workers = 0),
+    verbose = FALSE # Change to TRUE to see training progress
+  )
+```
 
 ```R
 nnet_fit <- NNet %>% 
