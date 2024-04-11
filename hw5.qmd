@@ -140,48 +140,64 @@ Fit a linear regression model to predict the `median_house_value` :
 
 Interpret the coefficients and summarize your results. 
 
-```R
-lm_fit <- ... # Insert your code here
-... # Insert your code here
+```{R}
+lm_fit <- lm(median_house_value ~ latitude + longitude + housing_median_age + total_rooms + total_bedrooms + population + median_income + ocean_proximity, data = df_train)
+
+summary(lm_fit)
+
 ```
+There is strong negative impact of latitude and longitude, suggesting geographical areas play a crucial role in housing prices. The model underscores the importance of median income as the most substantial positive predictor, indicating that economic factors greatly influence house values. Population density negatively affects house values, while the age of housing positively correlates, suggesting older districts command higher prices. Additionally, proximity to the ocean has a varied impact, with inland locations decreasing values and properties on islands significantly increasing them, reflecting the premium placed on desirable locations.
 
 ---
 
 ###### 1.5 (5 points)
 
 Complete the `rmse` function for computing the Root Mean-Squared Error between the true `y` and the predicted `yhat`, and use it to compute the RMSE for the regression model on `df_test`
-
-```R
+```{R}
 rmse <- function(y, yhat) {
   sqrt(mean((y - yhat)^2))
 }
 
-lm_predictions <- ... # Insert your code here
+lm_predictions <- predict(lm_fit, newdata = df_test)
+
+rmse(df_test$median_house_value, lm_predictions)
 ```
+
+
 
 
 ###### 1.6 (5 points)
 
 Fit a decision tree model to predict the `median_house_value` using the same predictors as in 1.4. Use the `rpart()` function.
 
-```R
-rpart_fit <- ... # Insert your code here
-rpart_predictions <- ... # Insert your code here
+```{R}
+rpart_fit <- rpart(median_house_value ~ latitude + longitude + housing_median_age + total_rooms + total_bedrooms + population + median_income + ocean_proximity, data = df_train, method = "anova")
+rpart_predictions <- predict(rpart_fit, newdata = df_test)
 ```
+
+
 
 
 Visualize the decision tree using the `rpart.plot()` function. 
 
-```R
-... # Insert your code here
+```{R}
+library(rpart.plot)
+
+rpart.plot(rpart_fit)
 ```
+
+
 
 
 Report the root mean squared error on the test set.
 
-```R
-rpart_predictions <- ... # Insert your code here
+```{R}
+rpart_predictions <- predict(rpart_fit, newdata = df_test)
+rmse(df_test$median_house_value, rpart_predictions)
+
 ```
+
+
 
 ---
 
@@ -189,10 +205,16 @@ rpart_predictions <- ... # Insert your code here
 
 Fit a support vector machine model to predict the `median_house_value` using the same predictors as in 1.4. Use the `svm()` function and use any kernel of your choice. Report the root mean squared error on the test set.
 
-```R
-svm_fit <- ... # Insert your code here
-svm_predictions <- ... # Insert your code here
+```{R}
+svm_fit <- svm(median_house_value ~ latitude + longitude + housing_median_age + total_rooms + total_bedrooms + population + median_income + ocean_proximity, 
+               data = df_train, 
+               kernel = "radial")
+
+svm_predictions <- predict(svm_fit, newdata = df_test)
+
+rmse(df_test$median_house_value, svm_predictions)
 ```
+
 
 ---
 
