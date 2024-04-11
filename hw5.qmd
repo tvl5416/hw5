@@ -225,19 +225,16 @@ Initialize a neural network model architecture:
 ```{R}
 NNet <- nn_module(
   initialize = function(p, q1, q2, q3) {
-    # Define the architecture of the neural network
     architecture <- list(
-      layer("input", size = p),  # Input layer with size 'p'
-      layer("fully_connected", size = q1),  # Fully connected layer with 'q1' nodes
-      layer("fully_connected", size = q2),  # Fully connected layer with 'q2' nodes
-      layer("fully_connected", size = q3),  # Fully connected layer with 'q3' nodes
-      layer("output", size = 1)  # Output layer with size 1
+      layer("input", size = p), 
+      layer("fully_connected", size = q1),  
+      layer("fully_connected", size = q2),  
+      layer("fully_connected", size = q3),  
+      layer("output", size = 1)  
     )
     return(architecture)
   },
   forward = function(x) {
-    # Define the forward propagation function
-    # Using relu activation function for hidden layers
     x <- relu(x %*% weight("fully_connected_1") + bias("fully_connected_1"))
     x <- relu(x %*% weight("fully_connected_2") + bias("fully_connected_2"))
     x <- relu(x %*% weight("fully_connected_3") + bias("fully_connected_3"))
@@ -253,23 +250,27 @@ NNet <- nn_module(
 Fit a neural network model to predict the `median_house_value` using the same predictors as in 1.4. Use the `model.matrix` function to create the covariate matrix and `luz` package for fitting the network with $32, 16, 8$ nodes in each of the three hidden layers. 
 
 ```{R}
-install.packages("torch")
-library("torch")
 nnet_fit <- NNet %>%
   setup(
-    input_size = ncol(train_data),  # Number of input features
-    q1 = 64,  # Number of nodes in the first hidden layer
-    q2 = 32,  # Number of nodes in the second hidden layer
-    q3 = 16   # Number of nodes in the third hidden layer
+    input_size = ncol(df_train),  
+    q1 = 64, 
+    q2 = 32, 
+    q3 = 16   
   ) %>%
   set_hparams(
-    optimizer = "adam",  # Adam optimizer
-    learning_rate = 0.001,  # Learning rate
-    loss_function = "mse"  # Mean squared error loss
+    optimizer = "adam",  
+    learning_rate = 0.001,  
+    loss_function = "mse" 
   ) %>%
   set_opt_params(
-    epochs = 100,   # Number of training epochs
-    batch_size = 32  # Batch size
+    epochs = 100,   
+    batch_size = 32  
+  )%>%
+  fit(
+    x = model.matrix(~., data = train_data), 
+    y = train_data$median_house_value,  
+    validation_split = 0.2,  
+    verbose = FALSE  
   )
 ```
 
@@ -294,17 +295,19 @@ nnet_fit <- NNet %>%
 
 Plot the results of the training and validation loss and accuracy.
 
-```R
-... # Insert your code here
+```{R}
+predict(nnet_fit, as.matrix(test_data))
 ```
+
+
 
 
 Report the root mean squared error on the test set.
 
-
-```R
-nnet_predictions <- ... # Insert your code here
+```{R}
+nnet_predictions <- predict(nnet_fit, as.matrix(df_test))
 ```
+
 
 ::: {.callout-warning}
 Remember to use the `as_array()` function to convert the predictions to a vector of numbers before computing the RMSE with `rmse()`
