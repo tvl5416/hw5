@@ -225,23 +225,23 @@ Initialize a neural network model architecture:
 ```{R}
 NNet <- nn_module(
   initialize = function(p, q1, q2, q3) {
-    self$layer1 <- nn_linear(p, q1)
-    self$activation1 <- nn_relu()
-    self$layer2 <- nn_linear(q1, q2)
-    self$activation2 <- nn_relu()
-    self$layer3 <- nn_linear(q2, q3)
-    self$activation3 <- nn_relu()
-    self$output_layer <- nn_linear(q3, 1) # Assuming a single output
+    # Define the architecture of the neural network
+    architecture <- list(
+      layer("input", size = p),  # Input layer with size 'p'
+      layer("fully_connected", size = q1),  # Fully connected layer with 'q1' nodes
+      layer("fully_connected", size = q2),  # Fully connected layer with 'q2' nodes
+      layer("fully_connected", size = q3),  # Fully connected layer with 'q3' nodes
+      layer("output", size = 1)  # Output layer with size 1
+    )
+    return(architecture)
   },
-  
   forward = function(x) {
-    x <- self$layer1(x)
-    x <- self$activation1(x)
-    x <- self$layer2(x)
-    x <- self$activation2(x)
-    x <- self$layer3(x)
-    x <- self$activation3(x)
-    x <- self$output_layer(x)
+    # Define the forward propagation function
+    # Using relu activation function for hidden layers
+    x <- relu(x %*% weight("fully_connected_1") + bias("fully_connected_1"))
+    x <- relu(x %*% weight("fully_connected_2") + bias("fully_connected_2"))
+    x <- relu(x %*% weight("fully_connected_3") + bias("fully_connected_3"))
+    x <- x %*% weight("output") + bias("output")
     return(x)
   }
 )
@@ -253,28 +253,23 @@ NNet <- nn_module(
 Fit a neural network model to predict the `median_house_value` using the same predictors as in 1.4. Use the `model.matrix` function to create the covariate matrix and `luz` package for fitting the network with $32, 16, 8$ nodes in each of the three hidden layers. 
 
 ```{R}
-
-library(torch)
-install.packages('luz')
-library(luz)
-
-
-nnet_fit <- nnet_model %>% 
+install.packages("torch")
+library("torch")
+nnet_fit <- NNet %>%
   setup(
-    loss = nn_mse_loss(),
-    optimizer = optim_adam
+    input_size = ncol(train_data),  # Number of input features
+    q1 = 64,  # Number of nodes in the first hidden layer
+    q2 = 32,  # Number of nodes in the second hidden layer
+    q3 = 16   # Number of nodes in the third hidden layer
   ) %>%
   set_hparams(
-    learning_rate = 0.001
+    optimizer = "adam",  # Adam optimizer
+    learning_rate = 0.001,  # Learning rate
+    loss_function = "mse"  # Mean squared error loss
   ) %>%
   set_opt_params(
-    weight_decay = 0.01
-  ) %>%
-  fit(
-    dataloader = dataloader,
-    epochs = 100, # Adjust based on convergence and computational resources
-    dataloader_options = list(num_workers = 0),
-    verbose = FALSE # Change to TRUE to see training progress
+    epochs = 100,   # Number of training epochs
+    batch_size = 32  # Batch size
   )
 ```
 
