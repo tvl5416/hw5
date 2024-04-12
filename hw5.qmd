@@ -263,14 +263,17 @@ nnet_fit <- NNet %>%
     loss_function = "mse" 
   ) %>%
   set_opt_params(
-    epochs = 100,   
-    batch_size = 32  
-  )%>%
+    epochs = 100, 
+    batch_size = 32 
+  )
+
+# Fit the neural network
+result <- nnet_fit %>%
   fit(
-    x = model.matrix(~., data = train_data), 
-    y = train_data$median_house_value,  
-    validation_split = 0.2,  
-    verbose = FALSE  
+    x = model.matrix(~., data = df_train), 
+    y = df_train$median_house_value, 
+    validation_split = 0.2, 
+    verbose = FALSE # Set to TRUE for tuning
   )
 ```
 
@@ -296,7 +299,7 @@ nnet_fit <- NNet %>%
 Plot the results of the training and validation loss and accuracy.
 
 ```{R}
-predict(nnet_fit, as.matrix(test_data))
+plot(result)
 ```
 
 
@@ -306,6 +309,9 @@ Report the root mean squared error on the test set.
 
 ```{R}
 nnet_predictions <- predict(nnet_fit, as.matrix(df_test))
+nnet_predictions <- as.vector(as.array(nnet_predictions))
+
+rmse(nnet_predictions, df_test$median_house_value)
 ```
 
 
@@ -347,8 +353,13 @@ Read the data file as a tibble in R. Preprocess the data such that:
 2. all column names to lower case for consistency
 3. Any observations with missing values are dropped
 
-```R
-df <- ... # Insert your code here
+```{R}
+path <- "data/spambase.csv"
+
+df1 <- read_csv(path) %>%
+  mutate(across(where(is.character), as.factor)) %>% 
+  rename_with(tolower) %>%  
+  drop_na()  
 ```
 
 ---
@@ -357,30 +368,37 @@ df <- ... # Insert your code here
 
 Split the data `df` into `df_train` and `df_split` using `test_ind` in the code below:
 
-```R
+```{R}
 set.seed(42)
 test_ind <- sample(
-  1:nrow(df), 
-  floor( nrow(df)/10 ),
+  1:nrow(df1), 
+  floor( nrow(df1)/10 ),
   replace=FALSE
 )
 
-df_train <- ... # Insert your code here
-df_test  <- ... # Insert your code here
+df1_train <- df1[-test_ind, ]
+df1_test  <- df1[test_ind, ]
 ```
+
 
 Complete the `overview` function which returns a data frame with the following columns: `accuracy`, `error`, `false positive rate`, `true positive rate`, between the true `true_class` and the predicted `pred_class` for any classification model.
 
-```R
+```{R}
 overview <- function(pred_class, true_class) {
-  accuracy <- ... # Insert your code here
-  error <- ... # Insert your code here
-  true_positives <- ... # Insert your code here
-  true_negatives <- ... # Insert your code here
-  false_positives <- ... # Insert your code here
-  false_negatives <- ... # Insert your code here
-  true_positive_rate <- ... # Insert your code here
-  false_positive_rate <- ...  # Insert your code here
+
+  cm <- table(Predicted = pred_class, Actual = true_class)
+  
+  # Calculate metrics
+  true_positives <- cm[2, 2]  
+  true_negatives <- cm[1, 1]  
+  false_positives <- cm[2, 1]
+  false_negatives <- cm[1, 2]
+  
+  accuracy = (true_positives + true_negatives) / sum(cm)
+  error = 1 - accuracy
+  true_positive_rate = true_positives / (true_positives + false_negatives)
+  false_positive_rate = false_positives / (true_negatives + false_positives)
+  
   return(
     data.frame(
       accuracy = accuracy,
@@ -393,16 +411,25 @@ overview <- function(pred_class, true_class) {
 ```
 
 
+
+
 ---
 
 ###### 2.3 (5 points)
 
 Fit a logistic regression model to predict the `spam` variable using the remaining predictors. Report the prediction accuracy on the test set.
 
-```R
-glm_fit <- ... # Insert your code here
-glm_classes <- ... # Insert your code here
+```{R}
+glm_fit <- glm(spam ~ ., data = df1_train, family = "binomial")
+
+# Predict on the test set
+glm_prob <- predict(glm_fit, newdata = df1_test, type = "response")  
+glm_classes <- ifelse(glm_prob > 0.5, 1, 0)  # Convert probabilities to class labels
+
+overview(pred_class = glm_classes, true_class = df1_test$spam)$accuracy
 ```
+
+
 
 ---
 
@@ -410,21 +437,31 @@ glm_classes <- ... # Insert your code here
 
 Fit a decision tree model to predict the `spam` variable using the remaining predictors. Use the `rpart()` function and set the `method` argument to `"class"`. 
 
-```R
-rpart_classes <- ... # Insert your code here
+```{R}
+dt_model <- rpart(spam ~ ., data = df1_train, method = "class")
+
+# Predict classes on the test set
+rpart_classes <- predict(dt_model, newdata = df1_test, type = "class")
+
 ```
+
+
 
 Visualize the decision tree using the `rpart.plot()` function. 
 
-```R
-... # Insert your code here
+
+```{R}
+rpart.plot(dt_model, under=TRUE, faclen=0)
 ```
+
+
 
 Report the prediction accuracy on the test set.
 
-```R
-rpart_classes <- ... # Insert your code here
+```{R}
+overview(pred_class = rpart_classes, true_class = df1_test$spam)$accuracy
 ```
+
 
 ---
 
@@ -432,14 +469,16 @@ rpart_classes <- ... # Insert your code here
 
 Fit a support vector machine model to predict the `spam` variable using the remaining predictors. Use the `svm()` function and use any kernel of your choice. Remember to set the `type` argument to `"C-classification"` **if you haven't** already converted `spam` to be of type `factor`.
 
-
-```R
-svm_fit <- ... # Insert your code here
+```{R}
+svm_fit <- svm(spam ~ ., data = df1_train, type = "C-classification", kernel = "radial")
 ```
+
+
 Report the prediction accuracy on the test set.
 
-```R
-svm_classes <- ... # Insert your code here
+```{R}
+svm_classes <- predict(svm_fit, newdata = df1_test)
+overview(pred_class = svm_classes, true_class = df1_test$spam)$accuracy
 ```
 
 ---
@@ -456,24 +495,37 @@ Note that the neural network in **Q 1.9** was a regression model. You will need 
 
 Use the `model.matrix` function to create the covariate matrix and `luz` package for fitting the network with $32, 16, 8$ nodes in each of the three hidden layers. 
 
-```R
-nnet_fit <- NNet %>% 
+```{R}
+X_train <- model.matrix(~ . -1, data = df1_train)  # Create design matrix, excluding intercept
+y_train <- ifelse(df1_train$spam == "spam", 1, 0)  # Ensure binary encoding
+
+X_test <- model.matrix(~ . -1, data = df1_test)
+y_test <- ifelse(df1_test$spam == "spam", 1, 0)
+
+# Convert datasets to torch tensors
+X_train_tensor <- torch_tensor(X_train, dtype = torch_float32())
+y_train_tensor <- torch_tensor(y_train, dtype = torch_float32())
+X_test_tensor <- torch_tensor(X_test, dtype = torch_float32())
+y_test_tensor <- torch_tensor(y_test, dtype = torch_float32())
+
+train_dataset <- tensor_dataset(X_train_tensor, y_train_tensor)
+train_dataloader <- dataloader(train_dataset, batch_size = 64, shuffle = TRUE)
+
+# Assuming 'model' is your neural network model defined as per previous instructions
+model_fit <- model %>%
   setup(
-    ... # Insert your code here
-  ) %>%
-  set_hparams(
-    ... # Insert your code here
-  ) %>%
-  set_opt_params(
-    ... # Insert your code here
+    loss = nn_bce_loss(),
+    optimizer = optim_adam(model$parameters(), lr = 0.001)
   ) %>%
   fit(
-    ... # Insert your code here
-    dataloader_options = ... # Insert your code here
-    verbose = FALSE # Change to TRUE while tuning. But, set to FALSE before submitting
-
+    dataloader = train_dataloader,
+    epochs = 100,
+    valid_data = list(X_test_tensor, y_test_tensor),
+    verbose = TRUE
   )
 ```
+
+
 
 ---
 
